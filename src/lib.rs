@@ -107,8 +107,16 @@ impl<A: Clone + 'static> hyper::server::Service for Spellbook<A> {
     fn call(&self, req: hyper::server::Request) -> Self::Future {
         let res = self.router.handle(self.app.clone(), Rc::new(req));
 
-        // TODO: respond 500 instead of crashing
-        let body = res.unwrap();
+        let body = match res {
+            Ok(body) => body,
+            Err(e) => {
+                let message = format!("{}", e);
+                Response::new()
+                    .with_header(hyper::header::ContentLength(message.len() as u64))
+                    .with_status(hyper::StatusCode::InternalServerError)
+                    .with_body(message)
+            },
+        };
 
         Box::new(futures::future::ok(
             body
