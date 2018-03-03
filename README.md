@@ -2,23 +2,16 @@
 extern crate hyper;
 extern crate spellbook;
 
+use spellbook::prelude::*;
 use std::rc::Rc;
-
-use spellbook::{
-    Request,
-    Response,
-    Result,
-    Router,
-    Spellbook
-};
 
 #[derive(Clone)]
 struct MyApp {
-    title: String,
+    title: &'static str,
 }
 
-fn index(app: Rc<MyApp>, _req: Rc<Request>) -> Result {
-    let body = format!("<h1>{}</h1>", app.title);
+fn user_handler(context: Rc<Context<MyApp>>) -> Result {
+    let body = format!("<h1>Welcome to {}</h1>", context.app.title);
 
     Ok(Response::new()
         .with_header(hyper::header::ContentLength(body.len() as u64))
@@ -27,11 +20,11 @@ fn index(app: Rc<MyApp>, _req: Rc<Request>) -> Result {
 
 fn main() {
     let app = MyApp {
-        title: String::from("My App"),
+        title: "My App",
     };
 
     let router = Router::new()
-        .get("/", index);
+        .get("/", user_handler);
 
     Spellbook::new(app, router).serve("127.0.0.1:3000");
 }
