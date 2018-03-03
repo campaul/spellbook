@@ -165,6 +165,7 @@ pub mod prelude {
         Router,
         Result,
         Spellbook,
+        Next,
     };
 }
 
