@@ -1,0 +1,6 @@
+[package]
+name = "spellbook"
+version = "0.1.0"
+authors = ["Cameron Paul <cpaul37@gmail.com>"]
+
+[dependencies]
