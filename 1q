@@ -1,6 +1,6 @@
 # spellbook
 
-`spellbook` is an experimental web framework written in Rust. It is not in a working state yet.
+`spellbook` is an experimental web framework written in Rust. It is not yet in a working state.
 
 ## Usage
 
