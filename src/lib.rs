@@ -56,14 +56,13 @@ fn build_chain<A: Clone + 'static>(
     mut tweens: Vec<fn(Rc<A>, Rc<Request>, &Fn() -> Result) -> Result>,
     next: Box<Fn() -> Result>
 ) -> Box<Fn() -> Result> {
-    let tween = tweens.pop().unwrap();
-
     if tweens.len() == 0 {
-        return Box::new(move || tween(app.clone(), req.clone(), &*next))
-    } else {
-        let chain = build_chain(app.clone(), req.clone(), tweens.clone(), next);
-        return Box::new(move || tween(app.clone(), req.clone(), &*chain))
+        return next;
     }
+
+    let tween = tweens.pop().unwrap();
+    let chain = build_chain(app.clone(), req.clone(), tweens.clone(), next);
+    return Box::new(move || tween(app.clone(), req.clone(), &*chain))
 }
 
 #[derive(Clone)]
