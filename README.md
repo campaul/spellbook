@@ -1,4 +1,4 @@
-```
+```rust
 extern crate hyper;
 extern crate spellbook;
 
