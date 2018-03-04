@@ -18,7 +18,6 @@ pub type Next<'a> = &'a Fn() -> Result;
 pub struct Router<A: Clone> {
     handlers: Vec<fn(Rc<Context<A>>) -> Result>,
     tweens: Vec<fn(Rc<Context<A>>, Next) -> Result>,
-    phantom: std::marker::PhantomData<A>,
 }
 
 impl<A: Clone + 'static> Router<A> {
@@ -26,7 +25,6 @@ impl<A: Clone + 'static> Router<A> {
         Router {
             handlers: vec![],
             tweens: vec![],
-            phantom: std::marker::PhantomData,
         }
     }
 
