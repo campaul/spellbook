@@ -59,6 +59,7 @@ impl<A: Clone + 'static> Router<A> {
     }
 }
 
+// TODO: clone tweens before mutating
 fn build_chain<A: Clone + 'static>(
     context: Rc<Context<A>>,
     mut tweens: Vec<fn(Rc<Context<A>>, &Fn() -> Result) -> Result>,
