@@ -13,11 +13,13 @@ pub type Request = hyper::Request<hyper::Body>;
 pub type Response = hyper::Response;
 pub type Result = std::result::Result<hyper::Response, Box<Error>>;
 pub type Next<'a> = &'a Fn() -> Result;
+pub type Handler<A> = fn(Rc<Context<A>>) -> Result;
+pub type Tween<A> = fn(Rc<Context<A>>, Next) -> Result;
 
 #[derive(Clone)]
 pub struct Router<A: Clone> {
-    handlers: Vec<fn(Rc<Context<A>>) -> Result>,
-    tweens: Vec<fn(Rc<Context<A>>, Next) -> Result>,
+    handlers: Vec<Handler<A>>,
+    tweens: Vec<Tween<A>>,
 }
 
 impl<A: Clone + 'static> Router<A> {
@@ -28,12 +30,12 @@ impl<A: Clone + 'static> Router<A> {
         }
     }
 
-    pub fn get(mut self, _path: &str, handler: fn(Rc<Context<A>>) -> Result) -> Router<A> {
+    pub fn get(mut self, _path: &str, handler: Handler<A>) -> Router<A> {
         self.handlers.push(handler);
         self
     }
 
-    pub fn with(mut self, tween: fn(Rc<Context<A>>, Next) -> Result) -> Router<A> {
+    pub fn with(mut self, tween: Tween<A>) -> Router<A> {
         self.tweens.insert(0, tween);
         self
     }
@@ -60,7 +62,7 @@ impl<A: Clone + 'static> Router<A> {
 // TODO: clone tweens before mutating
 fn build_chain<A: Clone + 'static>(
     context: Rc<Context<A>>,
-    mut tweens: Vec<fn(Rc<Context<A>>, Next) -> Result>,
+    mut tweens: Vec<Tween<A>>,
     next: Box<Fn() -> Result>,
 ) -> Box<Fn() -> Result> {
     if tweens.len() == 0 {
