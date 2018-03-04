@@ -17,7 +17,7 @@ pub type Next<'a> = &'a Fn() -> Result;
 #[derive(Clone)]
 pub struct Router<A: Clone> {
     handlers: Vec<fn(Rc<Context<A>>) -> Result>,
-    tweens: Vec<fn(Rc<Context<A>>, &Fn() -> Result) -> Result>,
+    tweens: Vec<fn(Rc<Context<A>>, Next) -> Result>,
     phantom: std::marker::PhantomData<A>,
 }
 
@@ -35,7 +35,7 @@ impl<A: Clone + 'static> Router<A> {
         self
     }
 
-    pub fn with(mut self, tween: fn(Rc<Context<A>>, &Fn() -> Result) -> Result) -> Router<A> {
+    pub fn with(mut self, tween: fn(Rc<Context<A>>, Next) -> Result) -> Router<A> {
         self.tweens.insert(0, tween);
         self
     }
@@ -62,8 +62,8 @@ impl<A: Clone + 'static> Router<A> {
 // TODO: clone tweens before mutating
 fn build_chain<A: Clone + 'static>(
     context: Rc<Context<A>>,
-    mut tweens: Vec<fn(Rc<Context<A>>, &Fn() -> Result) -> Result>,
-    next: Box<Fn() -> Result>
+    mut tweens: Vec<fn(Rc<Context<A>>, Next) -> Result>,
+    next: Box<Fn() -> Result>,
 ) -> Box<Fn() -> Result> {
     if tweens.len() == 0 {
         return next;
@@ -71,7 +71,7 @@ fn build_chain<A: Clone + 'static>(
 
     let tween = tweens.pop().unwrap();
     let chain = build_chain(context.clone(), tweens.clone(), next);
-    return Box::new(move || tween(context.clone(), &*chain))
+    return Box::new(move || tween(context.clone(), &*chain));
 }
 
 #[derive(Clone)]
@@ -85,14 +85,14 @@ impl<A: Clone + 'static> Spellbook<A> {
         return Spellbook {
             router: router,
             app: Rc::new(app),
-        }
+        };
     }
 
     pub fn serve(self, address: &'static str) {
         let addr = address.parse().unwrap();
-        let server = hyper::server::Http::new().bind(
-            &addr, move || Ok(self.clone())
-        ).unwrap();
+        let server = hyper::server::Http::new()
+            .bind(&addr, move || Ok(self.clone()))
+            .unwrap();
         println!("Server running at {}", address);
         server.run().unwrap();
     }
@@ -103,7 +103,7 @@ impl<A: Clone + 'static> hyper::server::Service for Spellbook<A> {
     type Response = hyper::server::Response;
     type Error = hyper::Error;
 
-    type Future = Box<Future<Item=Self::Response, Error=Self::Error>>;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: hyper::server::Request) -> Self::Future {
         let res = self.router.handle(self.app.clone(), Rc::new(req));
@@ -116,12 +116,10 @@ impl<A: Clone + 'static> hyper::server::Service for Spellbook<A> {
                     .with_header(hyper::header::ContentLength(message.len() as u64))
                     .with_status(hyper::StatusCode::InternalServerError)
                     .with_body(message)
-            },
+            }
         };
 
-        Box::new(futures::future::ok(
-            body
-        ))
+        Box::new(futures::future::ok(body))
     }
 }
 
@@ -136,9 +134,7 @@ impl Route {
         // TODO: this is dummy code
         params.insert(String::from("user_id"), String::from("42"));
 
-        Route {
-            params: params,
-        }
+        Route { params: params }
     }
 
     // TODO: Return a ValidationError instead of a str
@@ -156,18 +152,11 @@ impl Route {
 pub struct Context<A: Clone> {
     pub app: Rc<A>,
     pub route: Rc<Route>,
-    pub req: Rc<Request>
+    pub req: Rc<Request>,
 }
 
 pub mod prelude {
-    pub use {
-        Context,
-        Response,
-        Router,
-        Result,
-        Spellbook,
-        Next,
-    };
+    pub use {Context, Next, Response, Result, Router, Spellbook};
 }
 
 // TODO: users shouldn't have to import hyper to build a response
