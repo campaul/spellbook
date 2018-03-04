@@ -89,12 +89,20 @@ impl<A: Clone + 'static> Spellbook<A> {
     }
 
     pub fn serve(self, address: &'static str) {
+        self.serve_until(address, futures::empty());
+    }
+
+    /// Execute the server until the given future, `shutdown_signal`, resolves.
+    pub fn serve_until<F>(self, address: &'static str, shutdown_signal: F)
+    where
+        F: Future<Item = (), Error = ()>,
+    {
         let addr = address.parse().unwrap();
         let server = hyper::server::Http::new()
             .bind(&addr, move || Ok(self.clone()))
             .unwrap();
         println!("Server running at {}", address);
-        server.run().unwrap();
+        server.run_until(shutdown_signal).unwrap();
     }
 }
 
