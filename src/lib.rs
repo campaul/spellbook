@@ -12,9 +12,9 @@ use std::str::FromStr;
 pub type Request = hyper::Request<hyper::Body>;
 pub type Response = hyper::Response;
 pub type Result = std::result::Result<hyper::Response, Box<Error>>;
-pub type Next<'a> = &'a Fn() -> Result;
+pub type Next<'a, A> = &'a Fn(Rc<Context<A>>) -> Result;
 pub type Handler<A> = fn(Rc<Context<A>>) -> Result;
-pub type Tween<A> = fn(Rc<Context<A>>, Next) -> Result;
+pub type Tween<A> = fn(Rc<Context<A>>, Next<A>) -> Result;
 
 #[derive(Clone)]
 pub struct Router<A: Clone> {
@@ -50,12 +50,9 @@ impl<A: Clone + 'static> Router<A> {
             req: req.clone(),
         });
 
-        let context_clone = context.clone();
-
-        let next = Box::new(move || handler(context.clone()));
-
-        let chain = build_chain(context_clone, self.tweens.clone(), next);
-        chain()
+        let next = Box::new(move |ctx: Rc<Context<A>>| handler(ctx));
+        let chain = build_chain(context.clone(), self.tweens.clone(), next);
+        chain(context)
     }
 }
 
@@ -63,15 +60,15 @@ impl<A: Clone + 'static> Router<A> {
 fn build_chain<A: Clone + 'static>(
     context: Rc<Context<A>>,
     mut tweens: Vec<Tween<A>>,
-    next: Box<Fn() -> Result>,
-) -> Box<Fn() -> Result> {
+    next: Box<Fn(Rc<Context<A>>) -> Result>
+) -> Box<Fn(Rc<Context<A>>) -> Result> {
     if tweens.len() == 0 {
         return next;
     }
 
     let tween = tweens.pop().unwrap();
-    let chain = build_chain(context.clone(), tweens.clone(), next);
-    return Box::new(move || tween(context.clone(), &*chain));
+    let chain = build_chain(context, tweens.clone(), next);
+    return Box::new(move |ctx: Rc<Context<A>>| tween(ctx, &*chain))
 }
 
 #[derive(Clone)]
