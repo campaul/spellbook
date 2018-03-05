@@ -9,14 +9,13 @@ extern crate hyper;
 extern crate spellbook;
 
 use spellbook::prelude::*;
-use std::rc::Rc;
 
 #[derive(Clone)]
 struct MyApp {
     title: &'static str,
 }
 
-fn user_handler(context: Rc<Context<MyApp>>) -> Result {
+fn user_handler(context: Context<MyApp>) -> Result {
     let body = format!("<h1>Welcome to {}</h1>", context.app.title);
 
     Ok(Response::new()
