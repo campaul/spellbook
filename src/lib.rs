@@ -1,12 +1,15 @@
 extern crate futures;
 extern crate hyper;
 
+mod router;
+pub use router::Router;
+
 use futures::future::Future;
 
 use std::error::Error;
 
-use std::collections::HashMap;
 use std::rc::Rc;
+use std::collections::HashMap;
 use std::str::FromStr;
 
 pub type Request = hyper::Request<hyper::Body>;
@@ -16,51 +19,11 @@ pub type Next<'a, A> = &'a Fn(Rc<Context<A>>) -> Result;
 pub type Handler<A> = fn(Rc<Context<A>>) -> Result;
 pub type Tween<A> = fn(Rc<Context<A>>, Next<A>) -> Result;
 
-#[derive(Clone)]
-pub struct Router<A: Clone> {
-    handlers: Vec<Handler<A>>,
-    tweens: Vec<Tween<A>>,
-}
-
-impl<A: Clone + 'static> Router<A> {
-    pub fn new() -> Router<A> {
-        Router {
-            handlers: vec![],
-            tweens: vec![],
-        }
-    }
-
-    pub fn get(mut self, _path: &str, handler: Handler<A>) -> Router<A> {
-        self.handlers.push(handler);
-        self
-    }
-
-    pub fn with(mut self, tween: Tween<A>) -> Router<A> {
-        self.tweens.insert(0, tween);
-        self
-    }
-
-    fn handle(&self, app: Rc<A>, req: Rc<Request>) -> Result {
-        // TODO: this is dummy code
-        let handler = self.handlers[0].clone();
-        let route = Rc::new(Route::new("/users/:user_id", req.uri()));
-        let context = Rc::new(Context {
-            app: app,
-            route: route,
-            req: req.clone(),
-        });
-
-        let next = Box::new(move |ctx: Rc<Context<A>>| handler(ctx));
-        let chain = build_chain(context.clone(), self.tweens.clone(), next);
-        chain(context)
-    }
-}
-
 // TODO: clone tweens before mutating
 fn build_chain<A: Clone + 'static>(
     context: Rc<Context<A>>,
     mut tweens: Vec<Tween<A>>,
-    next: Box<Fn(Rc<Context<A>>) -> Result>
+    next: Box<Fn(Rc<Context<A>>) -> Result>,
 ) -> Box<Fn(Rc<Context<A>>) -> Result> {
     if tweens.len() == 0 {
         return next;
@@ -68,7 +31,7 @@ fn build_chain<A: Clone + 'static>(
 
     let tween = tweens.pop().unwrap();
     let chain = build_chain(context, tweens.clone(), next);
-    return Box::new(move |ctx: Rc<Context<A>>| tween(ctx, &*chain))
+    return Box::new(move |ctx: Rc<Context<A>>| tween(ctx, &*chain));
 }
 
 #[derive(Clone)]
@@ -111,7 +74,7 @@ impl<A: Clone + 'static> hyper::server::Service for Spellbook<A> {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: hyper::server::Request) -> Self::Future {
-        let res = self.router.handle(self.app.clone(), Rc::new(req));
+        let res = router::handle(&self.router, self.app.clone(), Rc::new(req));
 
         let body = match res {
             Ok(body) => body,
