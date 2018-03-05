@@ -15,36 +15,35 @@ use std::str::FromStr;
 pub type Request = hyper::Request<hyper::Body>;
 pub type Response = hyper::Response;
 pub type Result = std::result::Result<hyper::Response, Box<Error>>;
-pub type Next<'a, A> = &'a Fn(Context<A>) -> Result;
-pub type Handler<A> = fn(Context<A>) -> Result;
-pub type Tween<A> = fn(Context<A>, Next<A>) -> Result;
+pub type Next<'a, S> = &'a Fn(Context<S>) -> Result;
+pub type Handler<S> = fn(Context<S>) -> Result;
+pub type Tween<S> = fn(Context<S>, Next<S>) -> Result;
 
-// TODO: clone tweens before mutating
-fn build_chain<A: Clone + 'static>(
-    context: Context<A>,
-    mut tweens: Vec<Tween<A>>,
-    next: Box<Fn(Context<A>) -> Result>,
-) -> Box<Fn(Context<A>) -> Result> {
+fn build_chain<S: Clone + 'static>(
+    context: Context<S>,
+    mut tweens: Vec<Tween<S>>,
+    next: Box<Fn(Context<S>) -> Result>,
+) -> Box<Fn(Context<S>) -> Result> {
     if tweens.len() == 0 {
         return next;
     }
 
     let tween = tweens.pop().unwrap();
     let chain = build_chain(context, tweens.clone(), next);
-    return Box::new(move |ctx: Context<A>| tween(ctx, &*chain));
+    return Box::new(move |ctx: Context<S>| tween(ctx, &*chain));
 }
 
 #[derive(Clone)]
-pub struct Spellbook<A: Clone> {
-    router: Router<A>,
-    app: A,
+pub struct Spellbook<S: Clone> {
+    router: Router<S>,
+    state: S,
 }
 
-impl<A: Clone + 'static> Spellbook<A> {
-    pub fn new(app: A, router: Router<A>) -> Spellbook<A> {
+impl<S: Clone + 'static> Spellbook<S> {
+    pub fn new(state: S, router: Router<S>) -> Spellbook<S> {
         return Spellbook {
             router: router,
-            app: app,
+            state: state,
         };
     }
 
@@ -66,7 +65,7 @@ impl<A: Clone + 'static> Spellbook<A> {
     }
 }
 
-impl<A: Clone + 'static> hyper::server::Service for Spellbook<A> {
+impl<S: Clone + 'static> hyper::server::Service for Spellbook<S> {
     type Request = hyper::server::Request;
     type Response = hyper::server::Response;
     type Error = hyper::Error;
@@ -74,7 +73,7 @@ impl<A: Clone + 'static> hyper::server::Service for Spellbook<A> {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: hyper::server::Request) -> Self::Future {
-        let res = router::handle(&self.router, self.app.clone(), Rc::new(req));
+        let res = router::handle(&self.router, self.state.clone(), Rc::new(req));
 
         let body = match res {
             Ok(body) => body,
@@ -118,16 +117,16 @@ impl Route {
 }
 
 #[derive(Clone)]
-pub struct Context<A: Clone> {
-    pub app: A,
+pub struct Context<S: Clone> {
+    pub state: S,
     pub route: Rc<Route>,
     pub req: Rc<Request>,
 }
 
-impl<A: Clone> Context<A> {
-    pub fn with(&self, app: A) -> Context<A> {
+impl<S: Clone> Context<S> {
+    pub fn with(&self, state: S) -> Context<S> {
         Context {
-            app: app,
+            state: state,
             route: self.route.clone(),
             req: self.req.clone(),
         }

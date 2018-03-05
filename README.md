@@ -11,12 +11,12 @@ extern crate spellbook;
 use spellbook::prelude::*;
 
 #[derive(Clone)]
-struct MyApp {
+struct State {
     title: &'static str,
 }
 
-fn user_handler(context: Context<MyApp>) -> Result {
-    let body = format!("<h1>Welcome to {}</h1>", context.app.title);
+fn user_handler(context: Context<State>) -> Result {
+    let body = format!("<h1>Welcome to {}</h1>", context.state.title);
 
     Ok(Response::new()
         .with_header(hyper::header::ContentLength(body.len() as u64))
@@ -24,13 +24,13 @@ fn user_handler(context: Context<MyApp>) -> Result {
 }
 
 fn main() {
-    let app = MyApp {
+    let state = State {
         title: "My App",
     };
 
     let router = Router::new()
         .get("/", user_handler);
 
-    Spellbook::new(app, router).serve("127.0.0.1:3000");
+    Spellbook::new(state, router).serve("127.0.0.1:3000");
 }
 ```
