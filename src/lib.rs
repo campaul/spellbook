@@ -124,6 +124,16 @@ pub struct Context<A: Clone> {
     pub req: Rc<Request>,
 }
 
+impl<A: Clone> Context<A> {
+    pub fn with(&self, app: A) -> Context<A> {
+        Context {
+            app: app,
+            route: self.route.clone(),
+            req: self.req.clone(),
+        }
+    }
+}
+
 pub mod prelude {
     pub use {Context, Next, Response, Result, Router, Spellbook};
 }
