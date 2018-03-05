@@ -33,17 +33,17 @@ impl<A: Clone + 'static> Router<A> {
     }
 }
 
-pub fn handle<A: Clone + 'static>(router: &Router<A>, app: Rc<A>, req: Rc<Request>) -> Result {
+pub fn handle<A: Clone + 'static>(router: &Router<A>, app: A, req: Rc<Request>) -> Result {
     // TODO: this is dummy code
     let handler = router.handlers[0].clone();
     let route = Rc::new(Route::new("/users/:user_id", req.uri()));
-    let context = Rc::new(Context {
+    let context = Context {
         app: app,
         route: route,
         req: req.clone(),
-    });
+    };
 
-    let next = Box::new(move |ctx: Rc<Context<A>>| handler(ctx));
+    let next = Box::new(move |ctx: Context<A>| handler(ctx));
     let chain = build_chain(context.clone(), router.tweens.clone(), next);
     chain(context)
 }

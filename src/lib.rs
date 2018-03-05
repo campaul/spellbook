@@ -15,36 +15,36 @@ use std::str::FromStr;
 pub type Request = hyper::Request<hyper::Body>;
 pub type Response = hyper::Response;
 pub type Result = std::result::Result<hyper::Response, Box<Error>>;
-pub type Next<'a, A> = &'a Fn(Rc<Context<A>>) -> Result;
-pub type Handler<A> = fn(Rc<Context<A>>) -> Result;
-pub type Tween<A> = fn(Rc<Context<A>>, Next<A>) -> Result;
+pub type Next<'a, A> = &'a Fn(Context<A>) -> Result;
+pub type Handler<A> = fn(Context<A>) -> Result;
+pub type Tween<A> = fn(Context<A>, Next<A>) -> Result;
 
 // TODO: clone tweens before mutating
 fn build_chain<A: Clone + 'static>(
-    context: Rc<Context<A>>,
+    context: Context<A>,
     mut tweens: Vec<Tween<A>>,
-    next: Box<Fn(Rc<Context<A>>) -> Result>,
-) -> Box<Fn(Rc<Context<A>>) -> Result> {
+    next: Box<Fn(Context<A>) -> Result>,
+) -> Box<Fn(Context<A>) -> Result> {
     if tweens.len() == 0 {
         return next;
     }
 
     let tween = tweens.pop().unwrap();
     let chain = build_chain(context, tweens.clone(), next);
-    return Box::new(move |ctx: Rc<Context<A>>| tween(ctx, &*chain));
+    return Box::new(move |ctx: Context<A>| tween(ctx, &*chain));
 }
 
 #[derive(Clone)]
 pub struct Spellbook<A: Clone> {
     router: Router<A>,
-    app: Rc<A>,
+    app: A,
 }
 
 impl<A: Clone + 'static> Spellbook<A> {
     pub fn new(app: A, router: Router<A>) -> Spellbook<A> {
         return Spellbook {
             router: router,
-            app: Rc::new(app),
+            app: app,
         };
     }
 
@@ -117,8 +117,9 @@ impl Route {
     }
 }
 
+#[derive(Clone)]
 pub struct Context<A: Clone> {
-    pub app: Rc<A>,
+    pub app: A,
     pub route: Rc<Route>,
     pub req: Rc<Request>,
 }
