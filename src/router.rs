@@ -44,6 +44,6 @@ pub fn handle<S: Clone + 'static>(router: &Router<S>, state: S, req: Rc<Request>
     };
 
     let next = Box::new(move |ctx: Context<S>| handler(ctx));
-    let chain = build_chain(context.clone(), router.tweens.clone(), next);
+    let chain = build_chain(router.tweens.clone(), next);
     chain(context)
 }

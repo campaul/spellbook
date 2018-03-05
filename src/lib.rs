@@ -20,7 +20,6 @@ pub type Handler<S> = fn(Context<S>) -> Result;
 pub type Tween<S> = fn(Context<S>, Next<S>) -> Result;
 
 fn build_chain<S: Clone + 'static>(
-    context: Context<S>,
     mut tweens: Vec<Tween<S>>,
     next: Box<Fn(Context<S>) -> Result>,
 ) -> Box<Fn(Context<S>) -> Result> {
@@ -29,7 +28,7 @@ fn build_chain<S: Clone + 'static>(
     }
 
     let tween = tweens.pop().unwrap();
-    let chain = build_chain(context, tweens.clone(), next);
+    let chain = build_chain(tweens.clone(), next);
     return Box::new(move |ctx: Context<S>| tween(ctx, &*chain));
 }
 
@@ -138,3 +137,76 @@ pub mod prelude {
 }
 
 // TODO: users shouldn't have to import hyper to build a response
+
+#[cfg(test)]
+mod tests {
+    extern crate hyper;
+
+    use router::handle;
+    use std::rc::Rc;
+    use std::str::FromStr;
+
+    use prelude::*;
+
+    #[derive(Clone)]
+    struct State {
+        name: Option<String>,
+    }
+
+    fn name_middleware(context: Context<State>, next: Next<State>) -> Result {
+        let new_state = State {
+            name: Some(String::from("Walt Longmire")),
+        };
+        next(context.with(new_state))
+    }
+
+    fn index(context: Context<State>) -> Result {
+        let body = match context.state.name {
+            Some(name) => format!("Hello {}!", name),
+            None => String::from("Hello World!"),
+        };
+
+        Ok(Response::new()
+            .with_header(hyper::header::ContentLength(body.len() as u64))
+            .with_body(body))
+    }
+
+    fn do_test(router: Router<State>, expected_body: String) {
+        let state = State {
+            name: None,
+        };
+
+        let result = handle(
+            &router,
+            state,
+            Rc::new(hyper::Request::new(hyper::Method::Get, hyper::Uri::from_str("http://localhost/").unwrap()))
+        );
+
+        let response = result.unwrap();
+        let expected_response = Response::new()
+            .with_header(hyper::header::ContentLength(expected_body.len() as u64))
+            .with_body(expected_body);
+
+        assert_eq!(
+            format!("{:?}", response.body()),
+            format!("{:?}", expected_response.body()),
+        );
+    }
+
+    #[test]
+    fn test_simple_handler() {
+        let router = Router::new()
+            .get("/", index);
+
+        do_test(router, String::from("Hello World!"));
+    }
+
+    #[test]
+    fn test_middleware() {
+        let router = Router::new()
+            .with(name_middleware)
+            .get("/", index);
+
+        do_test(router, String::from("Hello Walt Longmire!"));
+    }
+}
