@@ -1,3 +1,5 @@
+#![crate_name = "spellbook"]
+
 extern crate futures;
 extern crate hyper;
 
@@ -90,8 +92,42 @@ impl Route {
         Route { params: params }
     }
 
-    // TODO: Return a ValidationError instead of a str
+    /// Creates a Route from a params map.
+    /// This is useful for testing.
+    ///
+    /// # Arguments
+    ///
+    /// * `params` - A String to String map of request params
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// use spellbook::Route;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(String::from("name"), String::from("Walt"));
+    /// map.insert(String::from("age"), String::from("42"));
+    ///
+    /// let route = Route::from_params(map);
+    ///
+    /// assert_eq!(route.get::<String>("name").unwrap(), "Walt");
+    /// assert_eq!(route.get::<u32>("age").unwrap(), 42);
+    pub fn from_params(params: HashMap<String, String>) -> Route{
+        Route {
+            params: params,
+        }
+    }
+
+    /// Returns the value of a request param.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The name of a request param
+    /// ```
     pub fn get<T: FromStr>(&self, key: &str) -> std::result::Result<T, &'static str> {
+        // TODO: Return a ValidationError instead of a str
         match self.params.get(key) {
             Some(s) => match s.parse() {
                 Ok(v) => Ok(v),
@@ -110,11 +146,61 @@ pub struct Context<S: Clone> {
 }
 
 impl<S: Clone> Context<S> {
+    /// Creates a new Context with the same route and req as the original
+    /// Context, but with the given state.
+    ///
+    /// # Arguments
+    ///
+    /// * `state` - Some arbitrary state
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// use spellbook::Context;
+    /// use spellbook::Request;
+    /// use spellbook::Route;
+    ///
+    /// let ctx1 = Context::empty("one");
+    /// let ctx2 = ctx1.with("two");
+    ///
+    /// assert_eq!(ctx1.req.uri(), ctx2.req.uri());
+    /// assert_eq!(ctx2.state, "two");
+    /// ```
     pub fn with(&self, state: S) -> Context<S> {
         Context {
             state: state,
             route: self.route.clone(),
             req: self.req.clone(),
+        }
+    }
+
+    /// Creates a Context with the route "/", no params, and the given state.
+    /// This is useful for testing.
+    ///
+    /// # Arguments
+    ///
+    /// * `state` - Some arbitrary state
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use spellbook::Context;
+    ///
+    /// let ctx = Context::empty(());
+    ///
+    /// assert_eq!(ctx.req.uri().path(), "/");
+    /// assert_eq!(ctx.state, ());
+    /// ```
+    pub fn empty(state: S) -> Context<S> {
+        Context {
+            req: Rc::new(Request::new(
+                hyper::Method::Get,
+                hyper::Uri::from_str("/").unwrap()
+            )),
+            route: Rc::new(Route { params: HashMap::new() }),
+            state: state,
         }
     }
 }
