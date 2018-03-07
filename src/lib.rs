@@ -33,14 +33,14 @@ fn build_chain<S: Clone + 'static>(
 }
 
 #[derive(Clone)]
-pub struct Spellbook<S: Clone> {
+pub struct Server<S: Clone> {
     router: Router<S>,
     state: S,
 }
 
-impl<S: Clone + 'static> Spellbook<S> {
-    pub fn new(state: S, router: Router<S>) -> Spellbook<S> {
-        return Spellbook {
+impl<S: Clone + 'static> Server<S> {
+    pub fn new(state: S, router: Router<S>) -> Server<S> {
+        return Server {
             router: router,
             state: state,
         };
@@ -64,7 +64,7 @@ impl<S: Clone + 'static> Spellbook<S> {
     }
 }
 
-impl<S: Clone + 'static> hyper::server::Service for Spellbook<S> {
+impl<S: Clone + 'static> hyper::server::Service for Server<S> {
     type Request = hyper::server::Request;
     type Response = hyper::server::Response;
     type Error = hyper::Error;
@@ -132,10 +132,6 @@ impl<S: Clone> Context<S> {
     }
 }
 
-pub mod prelude {
-    pub use {Context, Next, Response, Result, Router, Spellbook};
-}
-
 // TODO: users shouldn't have to import hyper to build a response
 
 #[cfg(test)]
@@ -143,10 +139,13 @@ mod tests {
     extern crate hyper;
 
     use router::handle;
+    use super::Context;
+    use super::Next;
+    use super::Response;
+    use super::Result;
+    use super::Router;
     use std::rc::Rc;
     use std::str::FromStr;
-
-    use prelude::*;
 
     #[derive(Clone)]
     struct State {
