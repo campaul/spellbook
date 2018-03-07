@@ -1,4 +1,3 @@
-use build_chain;
 use Context;
 use Handler;
 use Request;
@@ -50,4 +49,17 @@ pub fn handle<S: Clone + 'static>(router: &Router<S>, state: S, req: Rc<Request>
 
     let chain = build_chain(router.tweens.clone(), Box::new(handler));
     chain(context)
+}
+
+fn build_chain<S: Clone + 'static>(
+    mut tweens: Vec<Tween<S>>,
+    next: Box<Fn(Context<S>) -> Result>,
+) -> Box<Fn(Context<S>) -> Result> {
+    if tweens.len() == 0 {
+        return next;
+    }
+
+    let tween = tweens.pop().unwrap();
+    let chain = build_chain(tweens.clone(), next);
+    return Box::new(move |ctx: Context<S>| tween(ctx, &*chain));
 }

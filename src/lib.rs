@@ -19,19 +19,6 @@ pub type Next<'a, S> = &'a Fn(Context<S>) -> Result;
 pub type Handler<S> = fn(Context<S>) -> Result;
 pub type Tween<S> = fn(Context<S>, Next<S>) -> Result;
 
-fn build_chain<S: Clone + 'static>(
-    mut tweens: Vec<Tween<S>>,
-    next: Box<Fn(Context<S>) -> Result>,
-) -> Box<Fn(Context<S>) -> Result> {
-    if tweens.len() == 0 {
-        return next;
-    }
-
-    let tween = tweens.pop().unwrap();
-    let chain = build_chain(tweens.clone(), next);
-    return Box::new(move |ctx: Context<S>| tween(ctx, &*chain));
-}
-
 #[derive(Clone)]
 pub struct Server<S: Clone> {
     router: Router<S>,
@@ -131,8 +118,6 @@ impl<S: Clone> Context<S> {
         }
     }
 }
-
-// TODO: users shouldn't have to import hyper to build a response
 
 #[cfg(test)]
 mod tests {
