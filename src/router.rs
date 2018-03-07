@@ -22,6 +22,11 @@ impl<S: Clone + 'static> Router<S> {
         }
     }
 
+    pub fn proxy(handler: Handler<S>) -> Router<S> {
+        // TODO: this should proxy *all* verbs, not just get
+        Router::new().get("*", handler)
+    }
+
     pub fn get(mut self, _path: &str, handler: Handler<S>) -> Router<S> {
         self.handlers.push(handler);
         self
