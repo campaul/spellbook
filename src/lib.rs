@@ -83,13 +83,8 @@ pub struct Route {
 }
 
 impl Route {
-    fn new(_pattern: &str, _uri: &hyper::Uri) -> Route {
-        let mut params = HashMap::new();
-
-        // TODO: this is dummy code
-        params.insert(String::from("user_id"), String::from("42"));
-
-        Route { params: params }
+    fn new() -> Route {
+        Route { params: HashMap::new() }
     }
 
     /// Creates a Route from a params map.
@@ -237,11 +232,23 @@ mod tests {
         };
 
         Ok(Response::new()
-            .with_header(hyper::header::ContentLength(body.len() as u64))
             .with_body(body))
     }
 
-    fn do_test(router: Router<State>, expected_body: String) {
+    fn foo(_: Context<State>) -> Result {
+        Ok(Response::new().with_body("foo"))
+    }
+
+    fn bar(context: Context<State>) -> Result {
+        let val: u32 = context.route.get("val")?;
+        Ok(Response::new().with_body(format!("bar:{}", val)))
+    }
+
+    fn baz(_: Context<State>) -> Result {
+        Ok(Response::new().with_body("baz"))
+    }
+
+    fn do_test(router: &Router<State>, path: &str, expected_body: String) {
         let state = State {
             name: None,
         };
@@ -249,7 +256,7 @@ mod tests {
         let result = handle(
             &router,
             state,
-            Rc::new(hyper::Request::new(hyper::Method::Get, hyper::Uri::from_str("http://localhost/").unwrap()))
+            Rc::new(hyper::Request::new(hyper::Method::Get, hyper::Uri::from_str(path).unwrap()))
         );
 
         let response = result.unwrap();
@@ -268,7 +275,11 @@ mod tests {
         let router = Router::new()
             .get("/", index);
 
-        do_test(router, String::from("Hello World!"));
+        do_test(
+            &router,
+            "http://localhost/",
+            String::from("Hello World!")
+        );
     }
 
     #[test]
@@ -277,6 +288,36 @@ mod tests {
             .with(name_middleware)
             .get("/", index);
 
-        do_test(router, String::from("Hello Walt Longmire!"));
+        do_test(
+            &router,
+            "http://localhost/",
+            String::from("Hello Walt Longmire!")
+        );
+    }
+
+    #[test]
+    fn test_routing() {
+        let router = Router::new()
+            .get("/foo", foo)
+            .get("/bar/:val", bar)
+            .get("/baz/*", baz);
+
+        do_test(
+            &router,
+            "http://localhost/foo",
+            String::from("foo")
+        );
+
+        do_test(
+            &router,
+            "http://localhost/bar/42",
+            String::from("bar:42")
+        );
+
+        do_test(
+            &router,
+            "http://localhost/baz/quux/x/y/z",
+            String::from("baz")
+        );
     }
 }
