@@ -8,14 +8,14 @@
 extern crate hyper;
 extern crate spellbook;
 
-use spellbook::prelude::*;
+use spellbook::{self, Context, Response, Router, Server};
 
 #[derive(Clone)]
 struct State {
     title: &'static str,
 }
 
-fn user_handler(context: Context<State>) -> Result {
+fn user_handler(context: Context<State>) -> spellbook::Result {
     let body = format!("<h1>Welcome to {}</h1>", context.state.title);
 
     Ok(Response::new()
@@ -31,6 +31,6 @@ fn main() {
     let router = Router::new()
         .get("/", user_handler);
 
-    Spellbook::new(state, router).serve("127.0.0.1:3000");
+    Server::new(state, router).serve("127.0.0.1:3000");
 }
 ```
