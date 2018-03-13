@@ -5,10 +5,9 @@
 ## Usage
 
 ```rust
-extern crate hyper;
 extern crate spellbook;
 
-use spellbook::{self, Context, Response, Router, Server};
+use spellbook::{Context, Response, Router, Server};
 
 #[derive(Clone)]
 struct State {
@@ -17,10 +16,7 @@ struct State {
 
 fn user_handler(context: Context<State>) -> spellbook::Result {
     let body = format!("<h1>Welcome to {}</h1>", context.state.title);
-
-    Ok(Response::new()
-        .with_header(hyper::header::ContentLength(body.len() as u64))
-        .with_body(body))
+    Ok(Response::new().with_body(body))
 }
 
 fn main() {
@@ -28,8 +24,7 @@ fn main() {
         title: "My App",
     };
 
-    let router = Router::new()
-        .get("/", user_handler);
+    let router = Router::new().get("/", user_handler);
 
     Server::new(state, router).serve("127.0.0.1:3000");
 }
