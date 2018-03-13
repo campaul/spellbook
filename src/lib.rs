@@ -61,7 +61,7 @@ impl<S: Clone + 'static> hyper::server::Service for Server<S> {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: hyper::server::Request) -> Self::Future {
-        let res = router::handle(&self.router, self.state.clone(), Rc::new(req));
+        let res = self.router.handle(self.state.clone(), Rc::new(req));
 
         let body = match res {
             Ok(body) => body,

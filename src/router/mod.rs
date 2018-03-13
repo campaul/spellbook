@@ -27,7 +27,7 @@ impl<S: Clone + 'static> Router<S> {
     }
 
     // TODO: add more methods
-    pub fn get(mut self, pattern: &str, handler: Handler<S>) -> Router<S> {
+    pub fn get(self, pattern: &str, handler: Handler<S>) -> Router<S> {
         self.register("GET", pattern, handler)
     }
 
@@ -59,54 +59,55 @@ impl<S: Clone + 'static> Router<S> {
         self.tweens.insert(0, tween);
         self
     }
-}
 
-pub fn handle<S: Clone + 'static>(router: &Router<S>, state: S, req: Rc<Request>) -> Result {
-    let trimmed = format!("{}/{}", req.method(), trim_path(req.path()));
-    let segments = trimmed.split("/");
-    let mut current = 0;
-    let mut route = Route::new();
+    pub(crate) fn handle(&self, state: S, req: Rc<Request>) -> Result {
+        let trimmed = format!("{}/{}", req.method(), trim_path(req.path()));
+        let segments = trimmed.split("/");
+        let mut current = 0;
+        let mut route = Route::new();
 
-    for segment in segments {
-        match router.handlers.node_get_child(current, String::from(segment)) {
-            Some(child) => {
-                current = *child;
-            },
-            None => {
-                match router.handlers.node_get_wildcard(current) {
-                    Some(wildcard) => {
-                        current = wildcard.1;
-                        if wildcard.0.starts_with(":") {
-                            let mut wildcard_string = String::from(wildcard.0);
-                            wildcard_string.remove(0);
-                            route.params.insert(wildcard_string, String::from(segment));
-                        } else {
+        for segment in segments {
+            match self.handlers.node_get_child(current, String::from(segment)) {
+                Some(child) => {
+                    current = *child;
+                },
+                None => {
+                    match self.handlers.node_get_wildcard(current) {
+                        Some(wildcard) => {
+                            current = wildcard.1;
+                            if wildcard.0.starts_with(":") {
+                                let mut wildcard_string = String::from(wildcard.0);
+                                wildcard_string.remove(0);
+                                route.params.insert(wildcard_string, String::from(segment));
+                            } else {
+                                break;
+                            }
+                        },
+                        None => {
+                            current = 0;
                             break;
-                        }
-                    },
-                    None => {
-                        current = 0;
-                        break;
-                    },
-                }
-            },
+                        },
+                    }
+                },
+            }
         }
-    }
 
-    if let Some(handler) = router.handlers.node_get_handler(current) {
-        let context = Context {
-            state: state,
-            route: Rc::new(route),
-            req: req.clone(),
-        };
-        let chain = build_chain(router.tweens.clone(), Box::new(handler));
-        return chain(context);
-    }
+        if let Some(handler) = self.handlers.node_get_handler(current) {
+            let context = Context {
+                state: state,
+                route: Rc::new(route),
+                req: req.clone(),
+            };
+            let chain = build_chain(self.tweens.clone(), Box::new(handler));
+            return chain(context);
+        }
 
-    Ok(Response::new()
-       .with_status(StatusCode::NotFound)
-       .with_body("404"))
+        Ok(Response::new()
+        .with_status(StatusCode::NotFound)
+        .with_body("404"))
+    }
 }
+
 
 fn build_chain<S: Clone + 'static>(
     mut tweens: Vec<Tween<S>>,
