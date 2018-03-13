@@ -84,6 +84,10 @@ impl<S: Clone> Tree<S> {
     }
 
     pub fn node_set_handler(&mut self, node_id: usize, handler: Handler<S>) {
+        if let Some(_) = self.nodes[node_id].handler {
+            panic!("Handler already registered for route.");
+        }
+
         self.nodes[node_id].handler = Some(handler);
     }
 

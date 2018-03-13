@@ -10,6 +10,7 @@ use Tween;
 use std::rc::Rc;
 
 use hyper::Response;
+use hyper::StatusCode;
 
 #[derive(Clone)]
 pub struct Router<S: Clone> {
@@ -25,10 +26,13 @@ impl<S: Clone + 'static> Router<S> {
         }
     }
 
+    // TODO: add more methods
     pub fn get(mut self, pattern: &str, handler: Handler<S>) -> Router<S> {
-        // TODO: handle routes ending in /, including "/"
+        self.register("GET", pattern, handler)
+    }
 
-        let trimmed = trim_path(pattern);
+    pub fn register(mut self, method: &str, pattern: &str, handler: Handler<S>) -> Router<S> {
+        let trimmed = format!("{}/{}", method, trim_path(pattern));
         let segments = trimmed.split("/");
         let mut current = 0;
 
@@ -58,7 +62,7 @@ impl<S: Clone + 'static> Router<S> {
 }
 
 pub fn handle<S: Clone + 'static>(router: &Router<S>, state: S, req: Rc<Request>) -> Result {
-    let trimmed = trim_path(req.path());
+    let trimmed = format!("{}/{}", req.method(), trim_path(req.path()));
     let segments = trimmed.split("/");
     let mut current = 0;
     let mut route = Route::new();
@@ -99,7 +103,9 @@ pub fn handle<S: Clone + 'static>(router: &Router<S>, state: S, req: Rc<Request>
         return chain(context);
     }
 
-    Ok(Response::new().with_body("404"))
+    Ok(Response::new()
+       .with_status(StatusCode::NotFound)
+       .with_body("404"))
 }
 
 fn build_chain<S: Clone + 'static>(
@@ -118,6 +124,7 @@ fn build_chain<S: Clone + 'static>(
 fn trim_path(pattern: &str) -> String {
     let mut pattern_string = String::from(pattern);
 
+    // TODO: should it be an error is there is no leading slash?
     if pattern_string.starts_with("/") {
         pattern_string.remove(0);
     }
