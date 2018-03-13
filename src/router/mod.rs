@@ -26,6 +26,8 @@ impl<S: Clone + 'static> Router<S> {
     }
 
     pub fn get(mut self, pattern: &str, handler: Handler<S>) -> Router<S> {
+        // TODO: handle routes ending in /, including "/"
+
         let trimmed = trim_path(pattern);
         let segments = trimmed.split("/");
         let mut current = 0;

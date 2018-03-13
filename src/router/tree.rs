@@ -38,6 +38,10 @@ impl<S: Clone> Tree<S> {
     }
 
     pub fn node_add_child(&mut self, parent_id: usize, segment: String) -> usize {
+        if let Some(_) = self.nodes[parent_id].wildcard {
+            panic!("Literal conflicts with route params.");
+        }
+
         match self.nodes[parent_id].children.get(&segment) {
             Some(&node_id) => node_id,
             None => {
@@ -53,15 +57,26 @@ impl<S: Clone> Tree<S> {
     }
 
     pub fn node_set_wildcard(&mut self, parent_id: usize, segment: String) -> usize {
-        match self.nodes[parent_id].wildcard {
-            // TODO: if _ != segment then crash because there are conflicting wildcards
+        if self.nodes[parent_id].children.len() > 0 {
+            panic!("Route param conflicts with literals.");
+        }
+
+        if let Some((ref s, _)) = self.nodes[parent_id].wildcard {
+            if *s != segment {
+                panic!("Ambiguous route param.");
+            };
+        }
+
+        let node_id = match self.nodes[parent_id].wildcard {
             Some((_, node_id)) => node_id,
             None => {
                 let node_id = self.node_new();
                 self.nodes[parent_id].wildcard = Some((segment, node_id));
                 node_id
             }
-        }
+        };
+
+        node_id
     }
 
     pub fn node_get_wildcard(&self, node_id: usize) -> Option<(String, usize)> {
