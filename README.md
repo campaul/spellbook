@@ -8,14 +8,14 @@
 extern crate hyper;
 extern crate spellbook;
 
-use spellbook::prelude::*;
+use spellbook::{self, Context, Response, Router, Spellbook};
 
 #[derive(Clone)]
 struct State {
     title: &'static str,
 }
 
-fn user_handler(context: Context<State>) -> Result {
+fn user_handler(context: Context<State>) -> spellbook::Result {
     let body = format!("<h1>Welcome to {}</h1>", context.state.title);
 
     Ok(Response::new()
