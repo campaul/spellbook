@@ -2,6 +2,8 @@
 
 extern crate futures;
 extern crate hyper;
+extern crate serde;
+extern crate serde_json;
 
 mod router;
 pub use router::Router;
@@ -13,6 +15,7 @@ use std::error::Error;
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::result::Result as StdResult;
 
 pub type Request = hyper::Request<hyper::Body>;
 pub type Response = hyper::Response;
@@ -113,6 +116,10 @@ impl Route {
         Route {
             params: params,
         }
+    }
+
+    fn route_params<P>(&self) -> StdResult<P, serde_json::Error> where for<'a> P: serde::Deserialize<'a> {
+        serde_json::from_value(serde_json::to_value(&self.params)?)
     }
 
     /// Returns the value of a request param.

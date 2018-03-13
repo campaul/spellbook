@@ -6,3 +6,5 @@ authors = ["Cameron Paul <cpaul37@gmail.com>"]
 [dependencies]
 futures = "*"
 hyper = "*"
+serde = "*"
+serde_json = "*"
