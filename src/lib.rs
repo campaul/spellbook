@@ -3,7 +3,8 @@
 extern crate futures;
 extern crate hyper;
 extern crate serde;
-extern crate serde_json;
+extern crate serde_urlencoded;
+#[cfg(test)] #[macro_use] extern crate serde_derive;
 
 mod router;
 pub use router::Router;
@@ -118,8 +119,10 @@ impl Route {
         }
     }
 
-    fn route_params<P>(&self) -> StdResult<P, serde_json::Error> where for<'a> P: serde::Deserialize<'a> {
-        serde_json::from_value(serde_json::to_value(&self.params)?)
+    pub fn params<P>(&self) -> StdResult<P, serde_urlencoded::de::Error> where for<'a> P: serde::Deserialize<'a> {
+        serde_urlencoded::from_str(
+            serde_urlencoded::to_string(&self.params).unwrap().as_str(),
+        )
     }
 
     /// Returns the value of a request param.
@@ -245,8 +248,15 @@ mod tests {
         Ok(Response::new().with_body("foo"))
     }
 
+    #[derive(Deserialize)]
+    struct BarVals {
+        val: u32,
+    }
+
     fn bar(context: Context<State>) -> Result {
         let val: u32 = context.route.get("val")?;
+        let bar_vals: BarVals = context.route.params()?;
+        assert_eq!(val, bar_vals.val);
         Ok(Response::new().with_body(format!("bar:{}", val)))
     }
 
