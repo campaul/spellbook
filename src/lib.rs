@@ -211,7 +211,6 @@ impl<S: Clone> Context<S> {
 mod tests {
     extern crate hyper;
 
-    use router::handle;
     use super::Context;
     use super::Next;
     use super::Response;
@@ -260,8 +259,7 @@ mod tests {
             name: None,
         };
 
-        let result = handle(
-            &router,
+        let result = router.handle(
             state,
             Rc::new(hyper::Request::new(hyper::Method::Get, hyper::Uri::from_str(path).unwrap()))
         );
