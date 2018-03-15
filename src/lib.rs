@@ -280,10 +280,7 @@ mod tests {
         let response_bytes: Vec<u8> = result.unwrap().body().concat2().wait().unwrap().into_iter().collect();
         let response: String = from_utf8(&response_bytes).unwrap().to_string();
 
-        assert_eq!(
-            format!("{:?}", response),
-            format!("{:?}", expected_body)
-        );
+        assert_eq!(response, expected_body);
     }
 
     #[test]
