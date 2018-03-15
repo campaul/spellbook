@@ -213,6 +213,13 @@ impl<S: Clone> Context<S> {
         where for<'a> P: serde::Deserialize<'a> {
         self.route.params()
     }
+
+    pub fn query_params<P>(&self) -> StdResult<P, Box<Error>>
+        where for<'a> P: serde::Deserialize<'a> {
+        let query_params_string = self.req.query().ok_or("no query params")?;
+        let query_params: P = serde_urlencoded::from_str(query_params_string)?;
+        Ok(query_params)
+    }
 }
 
 #[cfg(test)]
@@ -269,6 +276,17 @@ mod tests {
         Ok(Response::new().with_body("baz"))
     }
 
+    #[derive(Deserialize, Debug)]
+    struct QueryParamTest {
+        foo: String,
+        bar: u32,
+    }
+
+    fn query_param_test(context: Context<State>) -> Result {
+        let params: QueryParamTest = context.query_params()?;
+        Ok(Response::new().with_body(format!("{:?}", params)))
+    }
+
     fn do_test(router: &Router<State>, path: &str, expected_body: String) {
         let state = State {
             name: None,
@@ -320,7 +338,8 @@ mod tests {
         let router = Router::new()
             .get("/foo", foo)
             .get("/bar/:val", bar)
-            .get("/baz/*", baz);
+            .get("/baz/*", baz)
+            .get("/query_param_test", query_param_test);
 
         do_test(
             &router,
@@ -339,5 +358,11 @@ mod tests {
             "http://localhost/baz/quux/x/y/z",
             String::from("baz")
         );
+
+        do_test(
+            &router,
+            "http://localhost/query_param_test?foo=thing&bar=42",
+            String::from("QueryParamTest { foo: \"thing\", bar: 42 }"),
+        )
     }
 }
