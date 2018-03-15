@@ -208,6 +208,20 @@ impl<S: Clone> Context<S> {
             state: state,
         }
     }
+
+    /// Parses route-specified params to a value
+    pub fn route_params<P>(&self) -> StdResult<P, serde_urlencoded::de::Error>
+        where for<'a> P: serde::Deserialize<'a> {
+        self.route.params()
+    }
+
+    /// Parses query params to a value
+    pub fn query_params<P>(&self) -> StdResult<P, serde_urlencoded::de::Error>
+        where for<'a> P: serde::Deserialize<'a> {
+        let query_params_string = self.req.query().unwrap_or("");
+        let query_params: P = serde_urlencoded::from_str(query_params_string)?;
+        Ok(query_params)
+    }
 }
 
 #[cfg(test)]
@@ -255,13 +269,24 @@ mod tests {
 
     fn bar(context: Context<State>) -> Result {
         let val: u32 = context.route.get("val")?;
-        let bar_vals: BarVals = context.route.params()?;
+        let bar_vals: BarVals = context.route_params()?;
         assert_eq!(val, bar_vals.val);
         Ok(Response::new().with_body(format!("bar:{}", val)))
     }
 
     fn baz(_: Context<State>) -> Result {
         Ok(Response::new().with_body("baz"))
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct QueryParamTest {
+        foo: Option<String>,
+        bar: Option<u32>,
+    }
+
+    fn query_param_test(context: Context<State>) -> Result {
+        let params: QueryParamTest = context.query_params()?;
+        Ok(Response::new().with_body(format!("{:?}", params)))
     }
 
     fn do_test(router: &Router<State>, path: &str, expected_body: String) {
@@ -333,6 +358,24 @@ mod tests {
             &router,
             "http://localhost/baz/quux/x/y/z",
             String::from("baz")
+        );
+    }
+
+    #[test]
+    fn test_query_params() {
+        let router = Router::new()
+            .get("/query_param_test", query_param_test);
+
+        do_test(
+            &router,
+            "http://localhost/query_param_test?foo=thing&bar=42",
+            String::from("QueryParamTest { foo: Some(\"thing\"), bar: Some(42) }"),
+        );
+
+        do_test(
+            &router,
+            "http://localhost/query_param_test",
+            String::from("QueryParamTest { foo: None, bar: None }"),
         );
     }
 }
