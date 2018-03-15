@@ -208,6 +208,11 @@ impl<S: Clone> Context<S> {
             state: state,
         }
     }
+
+    pub fn route_params<P>(&self) -> StdResult<P, serde_urlencoded::de::Error>
+        where for<'a> P: serde::Deserialize<'a> {
+        self.route.params()
+    }
 }
 
 #[cfg(test)]
@@ -255,7 +260,7 @@ mod tests {
 
     fn bar(context: Context<State>) -> Result {
         let val: u32 = context.route.get("val")?;
-        let bar_vals: BarVals = context.route.params()?;
+        let bar_vals: BarVals = context.route_params()?;
         assert_eq!(val, bar_vals.val);
         Ok(Response::new().with_body(format!("bar:{}", val)))
     }
