@@ -280,8 +280,8 @@ mod tests {
 
     #[derive(Deserialize, Debug)]
     struct QueryParamTest {
-        foo: String,
-        bar: u32,
+        foo: Option<String>,
+        bar: Option<u32>,
     }
 
     fn query_param_test(context: Context<State>) -> Result {
@@ -340,8 +340,7 @@ mod tests {
         let router = Router::new()
             .get("/foo", foo)
             .get("/bar/:val", bar)
-            .get("/baz/*", baz)
-            .get("/query_param_test", query_param_test);
+            .get("/baz/*", baz);
 
         do_test(
             &router,
@@ -360,11 +359,23 @@ mod tests {
             "http://localhost/baz/quux/x/y/z",
             String::from("baz")
         );
+    }
+
+    #[test]
+    fn test_query_params() {
+        let router = Router::new()
+            .get("/query_param_test", query_param_test);
 
         do_test(
             &router,
             "http://localhost/query_param_test?foo=thing&bar=42",
-            String::from("QueryParamTest { foo: \"thing\", bar: 42 }"),
-        )
+            String::from("QueryParamTest { foo: Some(\"thing\"), bar: Some(42) }"),
+        );
+
+        do_test(
+            &router,
+            "http://localhost/query_param_test",
+            String::from("QueryParamTest { foo: None, bar: None }"),
+        );
     }
 }
