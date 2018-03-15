@@ -209,11 +209,13 @@ impl<S: Clone> Context<S> {
         }
     }
 
+    /// Parses route-specified params to a value
     pub fn route_params<P>(&self) -> StdResult<P, serde_urlencoded::de::Error>
         where for<'a> P: serde::Deserialize<'a> {
         self.route.params()
     }
 
+    /// Parses query params to a value
     pub fn query_params<P>(&self) -> StdResult<P, Box<Error>>
         where for<'a> P: serde::Deserialize<'a> {
         let query_params_string = self.req.query().ok_or("no query params")?;
