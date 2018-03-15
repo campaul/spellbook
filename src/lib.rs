@@ -218,6 +218,7 @@ impl<S: Clone> Context<S> {
     /// Parses query params to a value
     pub fn query_params<P>(&self) -> StdResult<P, Box<Error>>
         where for<'a> P: serde::Deserialize<'a> {
+        //TODO figure out how to use non-Box<Error> error here
         let query_params_string = self.req.query().ok_or("no query params")?;
         let query_params: P = serde_urlencoded::from_str(query_params_string)?;
         Ok(query_params)
