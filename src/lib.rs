@@ -212,6 +212,9 @@ mod tests {
     use super::Router;
     use std::rc::Rc;
     use std::str::FromStr;
+    use futures::stream::Stream;
+    use futures::future::Future;
+    use std::str::from_utf8;
 
     #[derive(Clone)]
     struct State {
@@ -259,14 +262,12 @@ mod tests {
             Rc::new(hyper::Request::new(hyper::Method::Get, hyper::Uri::from_str(path).unwrap()))
         );
 
-        let response = result.unwrap();
-        let expected_response = Response::new()
-            .with_header(hyper::header::ContentLength(expected_body.len() as u64))
-            .with_body(expected_body);
+        let response_bytes: Vec<u8> = result.unwrap().body().concat2().wait().unwrap().into_iter().collect();
+        let response: String = from_utf8(&response_bytes).unwrap().to_string();
 
         assert_eq!(
-            format!("{:?}", response.body()),
-            format!("{:?}", expected_response.body()),
+            format!("{:?}", response),
+            format!("{:?}", expected_body)
         );
     }
 
