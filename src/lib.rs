@@ -113,10 +113,9 @@ impl Route {
     ///
     /// assert_eq!(route.get::<String>("name").unwrap(), "Walt");
     /// assert_eq!(route.get::<u32>("age").unwrap(), 42);
-    pub fn from_params(params: HashMap<String, String>) -> Route{
-        Route {
-            params: params,
-        }
+    /// ```
+    pub fn from_params(params: HashMap<String, String>) -> Route {
+        Route { params: params }
     }
 
     pub fn params<P>(&self) -> StdResult<P, serde_urlencoded::de::Error> where for<'a> P: serde::Deserialize<'a> {
@@ -130,7 +129,6 @@ impl Route {
     /// # Arguments
     ///
     /// * `key` - The name of a request param
-    /// ```
     pub fn get<T: FromStr>(&self, key: &str) -> std::result::Result<T, &'static str> {
         // TODO: Return a ValidationError instead of a str
         match self.params.get(key) {
