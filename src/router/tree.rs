@@ -1,4 +1,4 @@
-use Handler;
+use crate::Handler;
 
 use std::collections::HashMap;
 
@@ -16,9 +16,7 @@ pub struct Tree<S: Clone> {
 
 impl<S: Clone> Tree<S> {
     pub fn new() -> Tree<S> {
-        let mut tree = Tree {
-            nodes: vec![],
-        };
+        let mut tree = Tree { nodes: vec![] };
 
         tree.node_new();
 

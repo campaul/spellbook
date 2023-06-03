@@ -1,11 +1,11 @@
 mod tree;
 
-use Context;
-use Handler;
-use Request;
-use Result;
-use Route;
-use Tween;
+use crate::Context;
+use crate::Handler;
+use crate::Request;
+use crate::Result;
+use crate::Route;
+use crate::Tween;
 
 use std::rc::Rc;
 
@@ -38,15 +38,11 @@ impl<S: Clone + 'static> Router<S> {
 
         for segment in segments {
             if segment.starts_with(":") || segment.starts_with("*") {
-                current = self.handlers.node_set_wildcard(
-                    current,
-                    String::from(segment)
-                );
+                current = self
+                    .handlers
+                    .node_set_wildcard(current, String::from(segment));
             } else {
-                current = self.handlers.node_add_child(
-                    current,
-                    String::from(segment)
-                );
+                current = self.handlers.node_add_child(current, String::from(segment));
             }
         }
 
@@ -61,7 +57,7 @@ impl<S: Clone + 'static> Router<S> {
     }
 
     pub(crate) fn handle(&self, state: S, req: Rc<Request>) -> Result {
-        let trimmed = format!("{}/{}", req.method(), trim_path(req.path()));
+        let trimmed = format!("{}/{}", req.method(), trim_path(req.uri().path()));
         let segments = trimmed.split("/");
         let mut current = 0;
         let mut route = Route::new();
@@ -70,23 +66,21 @@ impl<S: Clone + 'static> Router<S> {
             match self.handlers.node_get_child(current, String::from(segment)) {
                 Some(child) => {
                     current = *child;
-                },
-                None => {
-                    match self.handlers.node_get_wildcard(current) {
-                        Some(wildcard) => {
-                            current = wildcard.1;
-                            if wildcard.0.starts_with(":") {
-                                let mut wildcard_string = String::from(wildcard.0);
-                                wildcard_string.remove(0);
-                                route.params.insert(wildcard_string, String::from(segment));
-                            } else {
-                                break;
-                            }
-                        },
-                        None => {
-                            current = 0;
+                }
+                None => match self.handlers.node_get_wildcard(current) {
+                    Some(wildcard) => {
+                        current = wildcard.1;
+                        if wildcard.0.starts_with(":") {
+                            let mut wildcard_string = String::from(wildcard.0);
+                            wildcard_string.remove(0);
+                            route.params.insert(wildcard_string, String::from(segment));
+                        } else {
                             break;
-                        },
+                        }
+                    }
+                    None => {
+                        current = 0;
+                        break;
                     }
                 },
             }
@@ -96,23 +90,22 @@ impl<S: Clone + 'static> Router<S> {
             let context = Context {
                 state: state,
                 route: Rc::new(route),
-                req: req.clone(),
+                req: Some(req.clone()),
             };
             let chain = build_chain(self.tweens.clone(), Box::new(handler));
             return chain(context);
         }
 
-        Ok(Response::new()
-        .with_status(StatusCode::NotFound)
-        .with_body("404"))
+        Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(String::from("404"))?)
     }
 }
 
-
 fn build_chain<S: Clone + 'static>(
     mut tweens: Vec<Tween<S>>,
-    next: Box<Fn(Context<S>) -> Result>,
-) -> Box<Fn(Context<S>) -> Result> {
+    next: Box<dyn Fn(Context<S>) -> Result>,
+) -> Box<dyn Fn(Context<S>) -> Result> {
     if tweens.len() == 0 {
         return next;
     }

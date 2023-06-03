@@ -2,12 +2,16 @@
 name = "spellbook"
 version = "0.1.0"
 authors = ["Cameron Paul <cpaul37@gmail.com>"]
+edition = "2021"
 
 [dependencies]
+bytes = "1"
 futures = "*"
-hyper = "*"
+http-body-util = "0.1.0-rc.2"
+hyper = { version = "1.0.0-rc.3", features = ["full"] }
 serde = "*"
 serde_urlencoded = "*"
+tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]
 serde_derive = "*"
